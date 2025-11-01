@@ -17,6 +17,7 @@ import AnimatedSection from './components/AnimatedSection';
 import FloatingCTA from './components/FloatingCTA';
 import LiveNotifications from './components/LiveNotifications';
 import VisualizationUploader from './components/VisualizationUploader';
+import KidsHolidayMagic from './components/KidsHolidayMagic';
 
 function App() {
   return (
@@ -55,6 +56,11 @@ function App() {
         <AnimatedSection>
           <Testimonials />
         </AnimatedSection>
+        
+        <section id="kids-magic">
+            <KidsHolidayMagic />
+        </section>
+
         <AnimatedSection>
           <HandbookCTA />
         </AnimatedSection>
