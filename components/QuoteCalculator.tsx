@@ -30,36 +30,51 @@ const QuoteCalculator: React.FC = () => {
     name: '',
     email: '',
     phone: '',
+    shedDimensions: '10x12',
+    shedMaterial: 'Wood T1-11',
   });
   
   const { calculateQuote, priceRange, isCalculating: isCalculatingPrice } = useQuoteCalculation();
   const [isLoading, setIsLoading] = useState(false); // For final submission step
   const [aiMessage, setAiMessage] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   
   const progressPercentage = ((step - 1) / (TOTAL_STEPS - 1)) * 100;
 
   const handleNext = () => {
-    if (step === 3) {
+    if (step === 2) {
+       if (formData.serviceType === ServiceType.Lights && (!formData.roofLinesLinearFeet || formData.roofLinesLinearFeet <= 0)) {
+        setFormError('Please enter a valid roof line estimate to proceed.');
+        return; // Block navigation
+      }
       calculateQuote(formData);
     }
+    setFormError(null); // Clear error on successful navigation
     setStep(prev => Math.min(prev + 1, TOTAL_STEPS));
   };
-  const handleBack = () => setStep(prev => Math.max(prev - 1, 1));
+  const handleBack = () => {
+    setFormError(null);
+    setStep(prev => Math.max(prev - 1, 1));
+  };
 
   const handleServiceSelect = (service: ServiceType) => {
     setFormData(prev => ({ ...prev, serviceType: service }));
     handleNext();
   };
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, files } = e.target;
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormError(null);
+    const { name, value, type } = e.target;
+
     if (type === 'file') {
-      setFormData(prev => ({ ...prev, [name]: files ? files[0] : null }));
+        const files = (e.target as HTMLInputElement).files;
+        setFormData(prev => ({ ...prev, [name]: files ? files[0] : null }));
     } else {
-      setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) : value }));
+        setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) : value }));
     }
   };
+
 
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -100,12 +115,38 @@ const QuoteCalculator: React.FC = () => {
             <h2 className="text-2xl font-bold mb-6 text-center text-brand-primary">What service do you need?</h2>
             <div className="grid grid-cols-1 gap-4">
               <button onClick={() => handleServiceSelect(ServiceType.Lights)} className="w-full p-4 bg-brand-primary text-white rounded-lg hover:bg-blue-800 transition">Christmas Light Installation</button>
+              <button onClick={() => handleServiceSelect(ServiceType.Shed)} className="w-full p-4 bg-brand-primary text-white rounded-lg hover:bg-blue-800 transition">Custom Shed Build</button>
               <button onClick={() => handleServiceSelect(ServiceType.Gutters)} className="w-full p-4 bg-brand-primary text-white rounded-lg hover:bg-blue-800 transition">Gutter Cleaning</button>
               <button onClick={() => handleServiceSelect(ServiceType.Inspection)} className="w-full p-4 bg-brand-primary text-white rounded-lg hover:bg-blue-800 transition">Drone Roof Inspection</button>
             </div>
           </motion.div>
         );
       case 2:
+        if (formData.serviceType === ServiceType.Shed) {
+            return (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <h2 className="text-2xl font-bold mb-6 text-center text-brand-primary">Design Your Custom Shed</h2>
+                    <div className="space-y-6">
+                        <div>
+                            <p className="block mb-2 font-medium text-gray-700">Shed Dimensions</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {(['8x10', '10x12', '12x16', 'Custom'] as const).map(s => (
+                                <button key={s} onClick={() => setFormData(prev => ({ ...prev, shedDimensions: s }))} className={`p-3 rounded-md transition text-sm ${formData.shedDimensions === s ? 'bg-brand-primary text-white' : 'bg-gray-200'}`}>{s}</button>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <p className="block mb-2 font-medium text-gray-700">Exterior Material</p>
+                            <div className="grid grid-cols-1 gap-2">
+                                {(['Wood T1-11', 'Vinyl', 'Metal'] as const).map(m => (
+                                <button key={m} onClick={() => setFormData(prev => ({ ...prev, shedMaterial: m }))} className={`p-3 rounded-md transition text-sm ${formData.shedMaterial === m ? 'bg-brand-primary text-white' : 'bg-gray-200'}`}>{m}</button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+            )
+        }
         return (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <h2 className="text-2xl font-bold mb-6 text-center text-brand-primary">Tell us about your home</h2>
@@ -126,7 +167,7 @@ const QuoteCalculator: React.FC = () => {
                 <>
                   <div>
                     <label htmlFor="roofLinesLinearFeet" className="block mb-1 font-medium">Estimated Roof Lines (linear feet)</label>
-                    <input type="number" name="roofLinesLinearFeet" id="roofLinesLinearFeet" value={formData.roofLinesLinearFeet} onChange={handleChange} className="w-full p-2 border rounded-md" />
+                    <input type="number" name="roofLinesLinearFeet" id="roofLinesLinearFeet" value={formData.roofLinesLinearFeet} onChange={handleChange} className={`w-full p-2 border rounded-md ${formError ? 'border-red-500' : 'border-gray-300'}`} aria-invalid={!!formError} aria-describedby={formError ? "roof-line-error" : undefined} />
                   </div>
                   <div>
                     <p className="block mb-2 font-medium">Lighting Type</p>
@@ -138,6 +179,16 @@ const QuoteCalculator: React.FC = () => {
                 </>
               )}
             </div>
+             {formError && (
+              <motion.div
+                id="roof-line-error"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm text-center"
+              >
+                {formError}
+              </motion.div>
+            )}
           </motion.div>
         );
       case 3:
@@ -219,7 +270,7 @@ const QuoteCalculator: React.FC = () => {
         <div className="p-6 md:p-8 relative">
           <div className="min-h-[350px] flex flex-col justify-center">
             {renderStep()}
-             { (step >= 3 && step < 5) && (priceRange || isCalculatingPrice) && (
+             { (step >= 2 && step < 5) && (priceRange || isCalculatingPrice) && (
                 <motion.div 
                     className="mt-6 p-4 bg-brand-light rounded-lg border border-brand-secondary/50"
                     initial={{ opacity: 0, y: 10 }}

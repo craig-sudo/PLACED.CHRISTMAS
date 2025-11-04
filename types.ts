@@ -4,6 +4,7 @@ export enum ServiceType {
   Lights = 'Christmas Lights',
   Gutters = 'Gutter Cleaning',
   Inspection = 'Roof Inspection',
+  Shed = 'Custom Shed Build',
 }
 
 export enum LightingType {
@@ -24,4 +25,7 @@ export interface QuoteFormData {
   name: string;
   email: string;
   phone: string;
+  // NEW SHED FIELDS
+  shedDimensions?: '8x10' | '10x12' | '12x16' | 'Custom';
+  shedMaterial?: 'Wood T1-11' | 'Vinyl' | 'Metal';
 }

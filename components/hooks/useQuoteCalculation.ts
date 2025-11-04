@@ -35,6 +35,28 @@ function calculateGutterPrice(data, rules) {
     return gutterFeetEstimate * rules.gutterPricePerFoot;
 }
 
+function calculateShedPrice(data, rules) {
+    const dim = data.shedDimensions;
+    const material = data.shedMaterial;
+    let basePrice = 0;
+
+    const sizePrices = {
+        '8x10': 3500,
+        '10x12': 5000,
+        '12x16': 7500,
+        'Custom': 9000,
+    };
+    basePrice += sizePrices[dim] || 3500;
+
+    if (material === 'Vinyl' || material === 'Metal') {
+        basePrice *= 1.15;
+    }
+
+    basePrice += basePrice * rules.shedPrepPercentage; 
+    
+    return basePrice;
+}
+
 function calculatePriceRange(data, rules) {
     let basePrice = 0;
     const service = data.serviceType;
@@ -44,23 +66,30 @@ function calculatePriceRange(data, rules) {
         if (data.lightingType === 'Rental') {
             basePrice += rules.rentalFee;
         }
+        if (data.stories === '2+') basePrice *= 1.25;
+        if (data.roofLinesLinearFeet > 200) basePrice *= 1.15;
+
     } else if (service === 'Gutter Cleaning') {
         basePrice += calculateGutterPrice(data, rules);
+        if (data.stories === '2+') basePrice *= 1.25;
+
     } else if (service === 'Roof Inspection') {
         basePrice += rules.inspectionBaseFee;
+        if (data.stories === '2+') basePrice *= 1.25;
+        
+    } else if (service === 'Custom Shed Build') {
+        basePrice += calculateShedPrice(data, rules);
+    }
+    
+    if (service === 'Christmas Lights' || service === 'Gutter Cleaning') {
+      const seasonalMultiplier = getSeasonalMultiplier(Date.now());
+      basePrice *= seasonalMultiplier;
     }
 
-    if (data.stories === '2+') basePrice *= 1.25;
-    if (data.serviceType === 'Christmas Lights' && data.roofLinesLinearFeet > 200) basePrice *= 1.15;
-    
-    const seasonalMultiplier = getSeasonalMultiplier(Date.now());
-    basePrice *= seasonalMultiplier;
+    const low = service === 'Custom Shed Build' ? Math.round(basePrice * 0.85) : Math.round(basePrice * 0.9);
+    const high = service === 'Custom Shed Build' ? Math.round(basePrice * 1.15) : Math.round(basePrice * 1.1);
 
-    // A slightly tighter 90-110% price range for the estimate.
-    return {
-        low: Math.round(basePrice * 0.9),
-        high: Math.round(basePrice * 1.1),
-    };
+    return { low, high };
 }
 
 self.onmessage = ({ data }) => {
@@ -114,6 +143,7 @@ export const useQuoteCalculation = () => {
             rentalFee: 400,
             gutterPricePerFoot: 2.50,
             inspectionBaseFee: 150,
+            shedPrepPercentage: 0.10,
         };
         
         workerRef.current.postMessage({
